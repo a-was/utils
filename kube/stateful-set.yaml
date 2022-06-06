@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ubuntu
+spec:
+  selector:
+    matchLabels:
+      app: ubuntu
+  serviceName: ubuntu
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ubuntu
+    spec:
+      containers:
+        - name: ubuntu
+          image: ubuntu:22.04
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          command: ["sleep", "infinity"]
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: "azurefile-audit"
+        resources:
+          requests:
+            storage: "5Gi"
