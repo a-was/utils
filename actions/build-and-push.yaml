@@ -1,0 +1,73 @@
+# this action requires to set:
+# env.APP (in this file)
+# vars.REGISTRY
+# vars.REGISTRY_USERNAME
+# secrets.REGISTRY_PASSWORD
+
+name: Build and Push docker image
+
+env:
+  APP: myapp
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*.*.*"
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Create VERSION file
+        # https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+        # https://docs.github.com/en/webhooks/webhook-events-and-payloads#push
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          COMMIT_REF: ${{ github.ref }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_DATE: ${{ github.event.head_commit.timestamp }}
+          AUTHOR_NAME: ${{ github.event.head_commit.committer.name }}
+          AUTHOR_EMAIL: ${{ github.event.head_commit.committer.email }}
+        run: |
+          cat << EOF > VERSION
+          commit: $COMMIT_SHA
+          ref: $COMMIT_REF
+          date: $COMMIT_DATE
+          author: $AUTHOR_NAME <${AUTHOR_EMAIL}>
+          message: $COMMIT_MESSAGE
+          EOF
+          cat VERSION
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          # list of Docker images to use as base name for tags
+          images: |
+            ${{ vars.REGISTRY }}/${{ env.APP }}
+          # generate Docker tags based on the following events/attributes
+          # https://github.com/marketplace/actions/docker-metadata-action#tags-input
+          tags: |
+            type=semver,pattern={{version}}
+            type=ref,event=branch
+      -
+        name: Login to registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ vars.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
