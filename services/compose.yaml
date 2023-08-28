@@ -1,0 +1,25 @@
+services:
+  app:
+    image: ${IMAGE:?}
+    container_name: ${CONTAINER_NAME:?}
+    hostname: ${CONTAINER_NAME:?}
+    ports:
+      - 5001:5000
+    environment:
+      TZ: ${TZ:-Europe/Warsaw}
+    env_file: .env.app
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    extra_hosts:
+      host.docker.internal: host-gateway
+    networks:
+      - app
+      - db
+
+networks:
+  app:
+    name: ${NETWORK_NAME:?}
+  db:
+    name: mariadb
+    external: true
